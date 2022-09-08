@@ -1,0 +1,15 @@
+{
+    "name": "example.sheelshah",
+    "description": "Example App ",
+    "architecture": "@CLICK_ARCH@",
+    "title": "Example App",
+    "hooks": {
+        "example": {
+            "apparmor": "example.apparmor",
+            "desktop":  "example.desktop"
+        }
+    },
+    "version": "1.0.0",
+    "maintainer": "Sheel Shah <sheel_arsenal@icloud.com>",
+    "framework" : "@CLICK_FRAMEWORK@"
+}
