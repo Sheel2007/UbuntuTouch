@@ -1,0 +1,5 @@
+/./manifest.json
+//example.apparmor
+//assets/logo.svg
+//qml/Main.qml
+//example.desktop

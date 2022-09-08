@@ -1,0 +1,15 @@
+/home/sshah/Documents/example/build/all/app/CMakeFiles/example.desktop.dir
+/home/sshah/Documents/example/build/all/app/CMakeFiles/example_FILES.dir
+/home/sshah/Documents/example/build/all/app/CMakeFiles/edit_cache.dir
+/home/sshah/Documents/example/build/all/app/CMakeFiles/rebuild_cache.dir
+/home/sshah/Documents/example/build/all/app/CMakeFiles/list_install_components.dir
+/home/sshah/Documents/example/build/all/app/CMakeFiles/install.dir
+/home/sshah/Documents/example/build/all/app/CMakeFiles/install/local.dir
+/home/sshah/Documents/example/build/all/app/CMakeFiles/install/strip.dir
+/home/sshah/Documents/example/build/all/app/po/CMakeFiles/example.sheelshah.pot.dir
+/home/sshah/Documents/example/build/all/app/po/CMakeFiles/edit_cache.dir
+/home/sshah/Documents/example/build/all/app/po/CMakeFiles/rebuild_cache.dir
+/home/sshah/Documents/example/build/all/app/po/CMakeFiles/list_install_components.dir
+/home/sshah/Documents/example/build/all/app/po/CMakeFiles/install.dir
+/home/sshah/Documents/example/build/all/app/po/CMakeFiles/install/local.dir
+/home/sshah/Documents/example/build/all/app/po/CMakeFiles/install/strip.dir

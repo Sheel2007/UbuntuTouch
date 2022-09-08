@@ -1,0 +1,3 @@
+# Hashes of file build rules.
+dc57c1000c41f2a0b3204e6bea2ce887 CMakeFiles/example.desktop
+1ba9a193dfeab7f5e8ae36c23e8f9a1c po/CMakeFiles/example.sheelshah.pot
