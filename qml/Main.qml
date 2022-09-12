@@ -39,6 +39,28 @@ MainView {
             id: header
             title: i18n.tr('Shopping List')
 	    subtitle: i18n.tr('Never forget what to buy')
+	    
+	    ActionBar {
+		anchors {
+		     top: parent.top
+		     right: parent.right
+		     topMargin: units.gu(1)
+		     rightMargin: units.gu(1)
+		}
+		numberOfSlots: 2
+		actions: [
+		     Action {
+			iconName: "settings"
+			text: i18n.tr("Settings")
+		     },
+		     Action {
+			iconName: "info"
+			onTriggered: PopupUtils.open(aboutDialog)
+			text: i18n.tr("About")
+		     }
+		]
+	     }
+
 	    StyleHints {
 	    	foregroundColor: UbuntuColors.orange
 	    }
@@ -54,7 +76,12 @@ MainView {
             }
 	    text: i18n.tr('Add')
 
-	    onClicked: shoppinglistModel.append({"name": textFieldInput.text})
+	    onClicked: {
+		if (textFieldInput.text != "") {
+		     shoppinglistModel.addItem(textFieldInput.text)
+		     textFieldInput.text = "";
+		}
+	    }
         }
 	
 	TextField {
@@ -82,13 +109,27 @@ MainView {
 	     delegate: ListItem {
 		width: parent.width
 		height: units.gu(3)
-		Text {
-		     text: name
-		     anchors {
-			left: parent.left
-			leftMargin: units.gu(2)
-			verticalCenter: parent.verticalCenter
+		Rectangle {
+		     anchors.fill: parent
+		     color: {
+			if(index % 2)
+			     return theme.palette.normal.selection;
+			else
+			     return UbuntuColors.graphite;
 		     }
+		     
+		     Text {
+			text: name
+		     }
+		}
+		
+		leadingActions: ListItemActions {
+		     actions: [
+			Action {
+			     iconName: "delete"
+			     onTriggered: shoppinglistModel.remove(index)
+			}
+		     ]
 		}
 	     }
 	}
@@ -141,5 +182,15 @@ MainView {
     
     ListModel {
 	id: shoppinglistModel
+
+	function addItem(name) {
+	     shoppinglistModel.append({"name": name})
+	}
+    }
+
+    Component {
+	id: aboutDialog
+	AboutDialog {}
+	
     }
 }
