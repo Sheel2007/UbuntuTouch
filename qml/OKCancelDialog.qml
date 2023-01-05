@@ -4,6 +4,11 @@ import Ubuntu.Components.Popups 1.3
 
 Dialog {
      id: dialog
+     onDoAction: {
+	//shoppinglistModel.clear()
+	shoppinglistModel.removeSelectedItems();
+	root.selectionMode = false;
+     }
      signal doAction()
 
      Button {
