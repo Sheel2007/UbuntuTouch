@@ -32,7 +32,21 @@ MainView {
 
     backgroundColor: UbuntuColors.graphite
 
-	property bool selectionMode: false
+	property bool selectionMode: true
+
+	property string itemPriceUrl: "http://apishoppinglist.codefounders.nl/itemsprice.php?itemname="
+
+	function getItemPrice(item) {
+		var xhr = new XMLHttpRequest();
+		xhr.onreadystatechange = function() {
+			if (xhr.readyState === XMLHttpRequest.DONE) {
+				item.price = result.price;
+			}
+		}
+
+		xhr.open("GET", itemPriceUrl + encodeURIComponent(item.name));
+		xhr.send();
+	}
 
     Page {
         anchors.fill: parent
@@ -148,6 +162,15 @@ MainView {
 					}
 				}
 
+				Text {
+					text: price
+					anchors {
+						right: parent.right
+						rightMargin: units.gu(2)
+						verticalCenter: parent.verticalCenter
+					}
+				}
+
 				MouseArea {
 					anchors.fill: parent
 					onPressAndHold: root.selectionMode = true;
@@ -171,60 +194,61 @@ MainView {
 	    }
 	}
 	
-	Row {
-	    spacing: units.gu(1)
-	    anchors {
-			bottom: parent.bottom
-			left: parent.left
-			right: parent.right
-			topMargin: units.gu(1)
-			bottomMargin: units.gu(2)
-			leftMargin: units.gu(2)
-			rightMargin: units.gu(2)
-	    }
-	    Button {
-	    	id: buttonRemoveAll
-	     	text: i18n.tr('Remove all...')
-	     	width: parent.width / 2 - units.gu(0.5)
-			onClicked: PopupUtils.open(removeAllDialog)
-	    }
-	    Button {
-	     	id: buttonRemoveSelected
-	     	text: i18n.tr('Remove selected...')
-	     	width: parent.width / 2 - units.gu(0.5)
-			onClicked: PopupUtils.open(removeSelectedDialog)
-	    }
-	}
-	
-	Component {
-	     id: removeAllDialog
-	
-	    OKCancelDialog {
-			title: i18n.tr('Remove all items')
-			text: i18n.tr('Are you sure?')
-			onDoAction: console.log('Remove all items')
-	    }
-	}
-
-	Component {
-	    id: removeSelectedDialog
-	     
-	    OKCancelDialog {
-			title: i18n.tr('Remove selected items')
-			text: i18n.tr('Are you sure?')
-			onDoAction: {
-				shoppinglistModel.removeSelectedItems();
-				root.selectionMode = false;
+		Row {
+			spacing: units.gu(1)
+			anchors {
+				bottom: parent.bottom
+				left: parent.left
+				right: parent.right
+				topMargin: units.gu(1)
+				bottomMargin: units.gu(2)
+				leftMargin: units.gu(2)
+				rightMargin: units.gu(2)
 			}
-	    }
-	}
+			Button {
+				id: buttonRemoveAll
+				text: i18n.tr('Remove all...')
+				width: parent.width / 2 - units.gu(0.5)
+				onClicked: PopupUtils.open(removeAllDialog)
+			}
+			Button {
+				id: buttonRemoveSelected
+				text: i18n.tr('Remove selected...')
+				width: parent.width / 2 - units.gu(0.5)
+				onClicked: PopupUtils.open(removeSelectedDialog)
+			}
+		}
+	
+		Component {
+			id: removeAllDialog
+		
+			OKCancelDialog {
+				title: i18n.tr('Remove all items')
+				text: i18n.tr('Are you sure?')
+				onDoAction: console.log('Remove all items')
+			}
+		}
+
+		Component {
+			id: removeSelectedDialog
+			
+			OKCancelDialog {
+				title: i18n.tr('Remove selected items')
+				text: i18n.tr('Are you sure?')
+				onDoAction: {
+					shoppinglistModel.removeSelectedItems();
+					root.selectionMode = false;
+				}
+			}
+		}
     }
     
     ListModel {
 		id: shoppinglistModel
 
 		function addItem(name, selected) {
-			shoppinglistModel.append({"name": name, "selected": selected})
+			shoppinglistModel.append({"name": name, "price": 0, "selected": selected})
+			getItemPrice(shoppinglistModel.get(shoppinglistModel.count - 1));
 		}
 
 		function removeSelectedItems() {
