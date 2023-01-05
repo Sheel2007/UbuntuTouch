@@ -20,6 +20,7 @@ import Ubuntu.Components 1.3
 import QtQuick.Layouts 1.3
 import Qt.labs.settings 1.0
 import Ubuntu.Components.Popups 1.3
+import QtQuick.LocalStorage 2.7
 
 MainView {
     id: root
@@ -36,6 +37,13 @@ MainView {
 
 	property string itemPriceUrl: "http://apishoppinglist.codefounders.nl/itemsprice.php?itemname="
 
+	property string dbName: "ShoppingListDB"
+	property string dbVersion: "1.0"
+	property string dbDescription: "Database for shopping list app"
+	property int dbEstimatedSize: 10000
+	property var db: LocalStorage.openDatabaseSync(dbName, dbVersion, dbDescription, dbEstimatedSize)
+	property string shoppingListTable: "ShoppingList"
+
 	function getItemPrice(item) {
 		var xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = function() {
@@ -46,6 +54,23 @@ MainView {
 
 		xhr.open("GET", itemPriceUrl + encodeURIComponent(item.name));
 		xhr.send();
+	}
+
+	function initializeShoppingList() {
+
+		db.transaction(function(tx) {
+			tx.executeSql('CREATE TABLE IF NOT EXISTS ' + shoppingListTable + ' (name TEXT, selected BOOLEAN)');
+			var results = tx.executeSql('SELECT rowid, name, selected FROM ' + shoppingListTable);
+
+			//Update ListModel
+			for (var i = 0; i < result.rows.length; i++) {
+				shoppinglistModel.append({"rowid": results.rows.item(i).rowid,
+											"name": results.rows.item(i).name,
+											"selected": Boolean(results.rows.item(i).selected
+											)});
+				getItemPrice(shoppinglistModel.get(shoppinglistModel.count - 1));
+			}
+		})
 	}
 
     Page {
@@ -80,6 +105,7 @@ MainView {
 			StyleHints {
 				foregroundColor: UbuntuColors.orange
 			}
+			Component.onCompleted: initializeShoppingList()
     	}
 
         Button {
@@ -247,15 +273,40 @@ MainView {
 		id: shoppinglistModel
 
 		function addItem(name, selected) {
-			shoppinglistModel.append({"name": name, "price": 0, "selected": selected})
-			getItemPrice(shoppinglistModel.get(shoppinglistModel.count - 1));
+			db.transaction(function(tx) {
+				var result = tx.executeSql('INSERT INTO ' + shoppingListTable + ' (name, selected) VALUES( ?, ? )', [name, selected]);
+				var rowid = Number(result.insertId);
+				shoppinglistModel.append({"name": name, "price": 0, "selected": selected})
+				getItemPrice(shoppinglistModel.get(shoppinglistModel.count - 1));
+			})
+			//shoppinglistModel.append({"name": name, "price": 0, "selected": selected})
+			//getItemPrice(shoppinglistModel.get(shoppinglistModel.count - 1));
 		}
 
 		function removeSelectedItems() {
+			db.transaction(function(tx) {
+				tx.executeSql('DELETE FROM ' + shoppingListTable + ' WHERE selected=?', [Boolean(true)]);
+			})
+
 			for(var i=shoppinglistModel.count-1; i>=0; i--) {
 				if(shoppinglistModel.get(i).selected)
 					shoppinglistModel.remove(i);
 			}
+		}
+
+		function removeItem(index) {
+			var rowid =shoppinglistModel.get(index).rowid;
+			db.transaction(function(tx) {
+				tx.executeSql('DELETE FROM ' + shoppingListTable + ' WHERE rowid=?', [rowid]);
+			})
+			shoppinglistModel.remove(index);
+		}
+
+		function removeAllItems() {
+			db.transaction(function(tx) {
+				tx.executeSql('DELETE FROM ' + shoppingListTable);
+			})
+			shoppinglistModel.clear();
 		}
 	}
 
