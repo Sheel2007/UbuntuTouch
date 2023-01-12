@@ -98,6 +98,7 @@ MainView {
 			var xhr = new XMLHttpRequest();
 			xhr.onreadystatechange = function() {
 				if (xhr.readyState === XMLHttpRequest.DONE) {
+					var result = JSON.parse(xhr.responseText.toString());
 					item.price = result.price;
 				}
 			}
