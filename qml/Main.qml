@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2022  Sheel Shah
+ * Copyright (C) 2022  Koen Vervloesem
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; version 3.
  *
- * example is distributed in the hope that it will be useful,
+ * shoppinglist is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -16,45 +16,30 @@
 
 import QtQuick 2.7
 import Ubuntu.Components 1.3
+import Ubuntu.Components.Popups 1.3
 //import QtQuick.Controls 2.2
 import QtQuick.Layouts 1.3
 import Qt.labs.settings 1.0
-import Ubuntu.Components.Popups 1.3
 import QtQuick.LocalStorage 2.7
 
 MainView {
     id: root
     objectName: 'mainView'
-    applicationName: 'example.sheelshah'
+    applicationName: 'shoppinglist.koenvervloesem'
     automaticOrientation: true
 
     width: units.gu(45)
     height: units.gu(75)
 
-    backgroundColor: UbuntuColors.graphite
+	backgroundColor: UbuntuColors.graphite
 
-	property bool selectionMode: true
-
-	property string itemPriceUrl: "http://apishoppinglist.codefounders.nl/itemsprice.php?itemname="
-
+    property bool selectionMode: true
 	property string dbName: "ShoppingListDB"
 	property string dbVersion: "1.0"
 	property string dbDescription: "Database for shopping list app"
 	property int dbEstimatedSize: 10000
 	property var db: LocalStorage.openDatabaseSync(dbName, dbVersion, dbDescription, dbEstimatedSize)
 	property string shoppingListTable: "ShoppingList"
-
-	function getItemPrice(item) {
-		var xhr = new XMLHttpRequest();
-		xhr.onreadystatechange = function() {
-			if (xhr.readyState === XMLHttpRequest.DONE) {
-				item.price = result.price;
-			}
-		}
-
-		xhr.open("GET", itemPriceUrl + encodeURIComponent(item.name));
-		xhr.send();
-	}
 
 	function initializeShoppingList() {
 
@@ -73,245 +58,265 @@ MainView {
 		})
 	}
 
+    ListModel {
+        id: shoppinglistModel
+
+        function addItem(name, selected) {
+			db.transaction(function(tx) {
+					var result = tx.executeSql('INSERT INTO ' + shoppingListTable + ' (name, selected) VALUES( ?, ? )', [name, selected]);
+					var rowid = Number(result.insertId);
+					shoppinglistModel.append({"name": name, "price": 0, "selected": selected});
+					getItemPrice(shoppinglistModel.get(shoppinglistModel.count - 1));
+				}
+			)
+        }
+
+        function removeSelectedItems() {
+			db.transaction(function(tx) {
+					tx.executeSql('DELETE FROM ' + shoppingListTable + ' WHERE selected=?', [Boolean(true)]);
+				}
+			)
+
+
+            for(var i=shoppinglistModel.count-1; i>=0; i--) {
+                if(shoppinglistModel.get(i).selected)
+                    shoppinglistModel.remove(i);
+            }
+        }
+
+		function removeAllItems() {
+			db.transaction(function(tx) {
+					tx.executeSql('DELETE FROM ' + shoppingListTable);
+				}
+			)
+			shoppinglistModel.clear();
+		}
+
+		property string itemPriceUrl: "http://192.168.1.153:5000/itemprice?itemname="
+
+		function getItemPrice(item) {
+			var xhr = new XMLHttpRequest();
+			xhr.onreadystatechange = function() {
+				if (xhr.readyState === XMLHttpRequest.DONE) {
+					item.price = result.price;
+				}
+			}
+
+			xhr.open("GET", itemPriceUrl + encodeURIComponent(item.name));
+			xhr.send();
+		}
+
+		function removeItem(index) {
+			var rowid = shoppinglistModel.get(index).rowid;
+			db.transaction(function(tx) {
+					tx.executeSql('DELETE FROM ' + shoppingListTable + ' WHERE rowid=?', [rowid]);
+				}
+			)
+			shoppinglistModel.remove(index);
+		}
+
+		function toggleSelectionStatus(index) {
+			if(root.selectionMode) {
+				var rowid = shoppinglistModel.get(index).rowid;
+				var selected = !shoppinglistModel.get(index).selected;
+
+				db.transaction(function(tx) {
+						tx.executeSql('UPDATE ' + shoppingListTable + ' SET selected=? WHERE rowid=?', [Boolean(selected), rowid]);
+					}
+				)
+
+				shoppinglistModel.get(index).selected = selected;
+				shoppinglistView.refresh();
+			}
+		}
+    }
+
+    Component {
+        id: removeAllDialog
+
+        OKCancelDialog {
+            title: i18n.tr("Remove all items")
+            text: i18n.tr("Are you sure?")
+            onDoAction: shoppinglistModel.removeAllItems()
+        }
+    }
+
+    Component {
+        id: removeSelectedDialog
+
+        OKCancelDialog {
+            title: i18n.tr("Remove selected items")
+            text: i18n.tr("Are you sure?")
+            onDoAction: {
+                shoppinglistModel.removeSelectedItems();
+                root.selectionMode = true;
+            }
+            onCancelAction: root.selectionMode = true
+        }   
+    }
+
+    Component {
+        id: aboutDialog
+        AboutDialog {}
+    }
+
     Page {
         anchors.fill: parent
 
         header: PageHeader {
             id: header
             title: i18n.tr('Shopping List')
-	    	subtitle: i18n.tr('Never forget what to buy')
-	    
-			ActionBar {
-				anchors {
-					top: parent.top
-					right: parent.right
-					topMargin: units.gu(1)
-					rightMargin: units.gu(1)
-				}
-				numberOfSlots: 2
-				actions: [
-					Action {
-						iconName: "settings"
-						text: i18n.tr("Settings")
-					},
-					Action {
-						iconName: "info"
-						onTriggered: PopupUtils.open(aboutDialog)
-						text: i18n.tr("About")
-					}
-				]
-			}
+            subtitle: i18n.tr('Never forget what to buy')
+
+            ActionBar {
+                anchors {
+                    top: header.top
+                    right: parent.right
+                    topMargin: units.gu(1)
+                    rightMargin: units.gu(1)
+                }
+                numberOfSlots: 1
+                actions: [
+                    Action {
+                        iconName: "settings"
+                        text: i18n.tr("Settings")
+                    },
+                    Action {
+                        iconName: "info"
+                        text: i18n.tr("About")
+                        onTriggered: PopupUtils.open(aboutDialog)
+                    }
+                ]
+            }
 
 			StyleHints {
 				foregroundColor: UbuntuColors.orange
 			}
 			Component.onCompleted: initializeShoppingList()
-    	}
+        }
 
         Button {
-			id: buttonAdd
-			anchors {
-				top: header.bottom
-				right: parent.right
-				topMargin: units.gu(2)
-				rightMargin: units.gu(2)
-			}
-			text: i18n.tr('Add')
+            id: buttonAdd
+            anchors {
+                top: header.bottom
+                right: parent.right
+                topMargin: units.gu(2)
+                rightMargin: units.gu(2)
+            }
+            text: i18n.tr('Add')
+            onClicked: {
+                if(textFieldInput.text != "") {
+                    shoppinglistModel.addItem(textFieldInput.text, false);
+                    textFieldInput.text = "";
+                }
+            }
+        }
 
-			onClicked: {
-				if (textFieldInput.text != "") {
-					shoppinglistModel.addItem(textFieldInput.text, false);
-					textFieldInput.text = "";
-				}
-			}
-    	}
-	
-	TextField {
-	    id: textFieldInput
-	    anchors {
-	     	top: header.bottom
-			left: parent.left
-			topMargin: units.gu(2)
-			leftMargin: units.gu(2)
-	    }
-	    placeholderText: i18n.tr('Shopping list item')
-	}
-	
-	ListView {
-        id: shoppinglistView
-	    anchors {
-			top: textFieldInput.bottom
-			bottom: parent.bottom
-			left: parent.left
-			right: parent.right
-			topMargin: units.gu(2)
-	    }
-	    model: shoppinglistModel
+        TextField {
+            id: textFieldInput
+            anchors {
+                top: header.bottom
+                left: parent.left
+                topMargin: units.gu(2)
+                leftMargin: units.gu(2)
+            }
+            placeholderText: i18n.tr("Shopping list item")
+        }
 
-		function refresh() {
-			// Refresh the list to update the selected status
-			var tmp = model;
-			model = null;
-			model = tmp;
-		}
+        ListView {
+            id: shoppinglistView
+            anchors {
+                top: textFieldInput.bottom
+                bottom: parent.bottom
+                left: parent.left
+                right: parent.right
+                topMargin: units.gu(2)
+            }
+            model: shoppinglistModel
 
-	    delegate: ListItem {
-			width: parent.width
-			height: units.gu(3)
-			Rectangle {
-				anchors.fill: parent
-				color: {
-					if(index % 2)
-						return theme.palette.normal.selection;
-					else
-						return UbuntuColors.graphite;
-				}
-				
-				CheckBox {
-					id: itemCheckbox
-					visible: root.selectionMode
-					anchors {
-						left: parent.left
-						leftMargin: units.gu(2)
-						verticalCenter: parent.verticalCenter
-					}
-					checked: shoppinglistModel.get(index).selected
-				}
+            function refresh() {
+                // Refresh the list to update the selected status
+                var tmp = model;
+                model = null;
+                model = tmp;
+            }
 
-				Text {
-					id: itemText
-					text: name
-					anchors {
-						left: root.selectionMode ? itemCheckbox.right : parent.left
-						leftMargin: root.selectionMode ? units.gu(1) : units.gu(2)
-						verticalCenter: parent.verticalCenter
-					}
-				}
+            delegate: ListItem {
+                width: parent.width
+                height: units.gu(3)
+                Rectangle {
+                    anchors.fill: parent
+                    color: index % 2 ? theme.palette.normal.selection : UbuntuColors.graphite;
+                    CheckBox {
+                        id: itemCheckbox
+                        visible: root.selectionMode
+                        anchors {
+                            left: parent.left
+                            leftMargin: units.gu(2)
+                            verticalCenter: parent.verticalCenter
+                        }
+                        checked: shoppinglistModel.get(index).selected
+                    }
+                    Text {
+                        id: itemText
+                        text: name 
+                        anchors {
+                            left: root.selectionMode ? itemCheckbox.right : parent.left
+                            leftMargin: root.selectionMode ? units.gu(1) : units.gu(2)
+                            verticalCenter: parent.verticalCenter
+                        }               
+	                }
 
-				Text {
-					text: price
-					anchors {
-						right: parent.right
-						rightMargin: units.gu(2)
-						verticalCenter: parent.verticalCenter
-					}
-				}
-
-				MouseArea {
-					anchors.fill: parent
-					onPressAndHold: root.selectionMode = true;
-					onClicked: {
-						if(root.selectionMode) {
-							shoppinglistModel.get(index).selected = !shoppinglistModel.get(index).selected;
-							shoppinglistView.refresh();
+					Text {
+						text: price
+						anchors {
+							right: parent.right
+							rightMargin: units.gu(2)
+							verticalCenter: parent.verticalCenter
 						}
 					}
-				}
-			}
-			
-			leadingActions: ListItemActions {
-				actions: [
-					Action {
-						iconName: "delete"
-						onTriggered: shoppinglistModel.remove(index)
-					}
-				]
-			}
-	    }
-	}
-	
-		Row {
-			spacing: units.gu(1)
-			anchors {
-				bottom: parent.bottom
-				left: parent.left
-				right: parent.right
-				topMargin: units.gu(1)
-				bottomMargin: units.gu(2)
-				leftMargin: units.gu(2)
-				rightMargin: units.gu(2)
-			}
-			Button {
-				id: buttonRemoveAll
-				text: i18n.tr('Remove all...')
-				width: parent.width / 2 - units.gu(0.5)
-				onClicked: PopupUtils.open(removeAllDialog)
-			}
-			Button {
-				id: buttonRemoveSelected
-				text: i18n.tr('Remove selected...')
-				width: parent.width / 2 - units.gu(0.5)
-				onClicked: PopupUtils.open(removeSelectedDialog)
-			}
-		}
-	
-		Component {
-			id: removeAllDialog
-		
-			OKCancelDialog {
-				title: i18n.tr('Remove all items')
-				text: i18n.tr('Are you sure?')
-				onDoAction: console.log('Remove all items')
-			}
-		}
 
-		Component {
-			id: removeSelectedDialog
-			
-			OKCancelDialog {
-				title: i18n.tr('Remove selected items')
-				text: i18n.tr('Are you sure?')
-				onDoAction: {
-					shoppinglistModel.removeSelectedItems();
-					root.selectionMode = false;
-				}
-			}
-		}
-    }
-    
-    ListModel {
-		id: shoppinglistModel
 
-		function addItem(name, selected) {
-			db.transaction(function(tx) {
-				var result = tx.executeSql('INSERT INTO ' + shoppingListTable + ' (name, selected) VALUES( ?, ? )', [name, selected]);
-				var rowid = Number(result.insertId);
-				shoppinglistModel.append({"name": name, "price": 0, "selected": selected})
-				getItemPrice(shoppinglistModel.get(shoppinglistModel.count - 1));
-			})
-			//shoppinglistModel.append({"name": name, "price": 0, "selected": selected})
-			//getItemPrice(shoppinglistModel.get(shoppinglistModel.count - 1));
-		}
+                    MouseArea {
+                        anchors.fill: parent
+                        onPressAndHold: root.selectionMode = true;
+                        onClicked: shoppinglistModel.toggleSelectionStatus(index)
+                    }
+                }
+                leadingActions: ListItemActions {
+                    actions: [
+                        Action {
+                            iconName: "delete"
+                            onTriggered: shoppinglistModel.removeItem(index)
+                        }
+                    ]
+                }
+            }
+        }
 
-		function removeSelectedItems() {
-			db.transaction(function(tx) {
-				tx.executeSql('DELETE FROM ' + shoppingListTable + ' WHERE selected=?', [Boolean(true)]);
-			})
-
-			for(var i=shoppinglistModel.count-1; i>=0; i--) {
-				if(shoppinglistModel.get(i).selected)
-					shoppinglistModel.remove(i);
-			}
-		}
-
-		function removeItem(index) {
-			var rowid =shoppinglistModel.get(index).rowid;
-			db.transaction(function(tx) {
-				tx.executeSql('DELETE FROM ' + shoppingListTable + ' WHERE rowid=?', [rowid]);
-			})
-			shoppinglistModel.remove(index);
-		}
-
-		function removeAllItems() {
-			db.transaction(function(tx) {
-				tx.executeSql('DELETE FROM ' + shoppingListTable);
-			})
-			shoppinglistModel.clear();
-		}
-	}
-
-    Component {
-		id: aboutDialog
-		AboutDialog {}
+        Row {
+            spacing: units.gu(1)
+            anchors {
+                bottom: parent.bottom
+                left: parent.left
+                right: parent.right
+                topMargin: units.gu(1)
+                bottomMargin: units.gu(2)
+                leftMargin: units.gu(2)
+                rightMargin: units.gu(2)
+            }
+            Button {
+                id: buttonRemoveAll
+                text: i18n.tr("Remove all...")
+                width: parent.width / 2 - units.gu(0.5)
+                onClicked: PopupUtils.open(removeAllDialog)
+            }
+            Button {
+                id: buttonRemoveSelected
+                text: i18n.tr("Remove selected...")
+                width: parent.width / 2 - units.gu(0.5)
+                onClicked: PopupUtils.open(removeSelectedDialog)
+            }
+        }     
     }
 }
