@@ -4,23 +4,23 @@ import Ubuntu.Components.Popups 1.3
 
 Dialog {
     id: dialog
-	onDoAction: {
-		shoppinglistModel.removeAllItems()
-		//root.selectionMode = false;
-	}
-	signal doAction()
+    signal doAction()
+    signal cancelAction()
 
     Button {
-		text: i18n.tr('OK')
-		color: theme.palette.normal.negative
-		onClicked: {
-			PopupUtils.close(dialog)
-			doAction()
-		}
+        text: i18n.tr("OK")
+        color: theme.palette.normal.negative
+        onClicked: {
+            PopupUtils.close(dialog);
+            doAction();
+        }
     }
 
     Button {
-		text: i18n.tr('Cancel')
-		onClicked: PopupUtils.close(dialog)
+        text: i18n.tr("Cancel")
+        onClicked: {
+            PopupUtils.close(dialog);
+            cancelAction();
+        }
     }
 }
